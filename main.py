@@ -70,6 +70,10 @@ def load_mol2_file(filename):
             atom_data.append(line.strip().split())
 
         # Create the DataFrame directly from the list of lists
+        for row in atom_data:
+            if len(row) != 9:
+                print(row)
+
         df = pd.DataFrame(atom_data,
                           columns=['atom_id', 'atom_name', 'x', 'y', 'z', 'atom_type', 'subst_id', 'subst_name', 'charge'])
 
