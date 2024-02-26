@@ -9,5 +9,13 @@ csv_file=$2
 #loop over the subdirectories to obtain 
 for f in ${directory}/*
 do
-python3 main.py $f $2
+    pre_f=${f%.*}
+    f_id=${pre_f##*/}
+    if [[ $f = *novolsite* ]]
+    then
+        echo "The structure $f_id has no VolSite data to be run."
+    else
+        python3 code/pocket/main.py $f $2
+        echo "The structure $f_id has been added to the descriptor csv file."
+    fi
 done

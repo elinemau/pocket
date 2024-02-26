@@ -719,7 +719,6 @@ if __name__ == '__main__':
     # Usage:
     # python3 main.py [volsite_output_folder] [descriptor_csv_file]
     volsite_output = argv[1]
-
     output_csv = argv[2]
     if not output_csv.endswith('.csv'):
         output_csv = argv[2] + '.csv'
