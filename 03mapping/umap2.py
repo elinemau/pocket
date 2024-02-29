@@ -1,6 +1,7 @@
 import pandas as pd
 import umap.umap_ as umap
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 import os
 import sys
 
@@ -9,24 +10,30 @@ os.makedirs('figures', exist_ok=True)
 #read in all descriptor csv files, give descriptor directory 
 desc_dir = sys.argv[1]
 
+databases=[]
 combo = pd.DataFrame()
 for filename in os.listdir(desc_dir):
     f = os.path.join(desc_dir, filename)
     filename, file_extension = os.path.splitext(filename)
+    databases.append(filename)
     csv = pd.read_csv(f)
-    csv.index = csv.index + '_' + filename
-    combo = pd.combo.merge(csv, how='right')
-    print(combo.axes[1])
+    print(filename)
+    print(csv.axes[1])
+    if combo.empty:
+        combo = csv
+    else: 
+        combo = combo.merge(csv, how='inner')
+    combo.set_index("protein_code", inplace=True)
+    csv.index = csv.index.astype(str) + filename
 
-combo.set_index("protein_code", inplace=True)
 combo = combo.dropna()
 combo = combo.drop(combo.columns[:1], axis=1)
 #df_sc.index = df_sc.index + "_sc"
 
 # combine df
 #df = pd.concat([df_sc, df_iri, df_kel], axis=0)
-df_volsite = combo.iloc[:, 1:89]
-df_algorithm = combo.iloc[:, 90:140]
+#df_volsite = combo.iloc[:, 1:89]
+#df_algorithm = combo.iloc[:, 90:140]
 
 threshold = 0.9
 # Calculate the proportion of zeros in each column
@@ -41,9 +48,15 @@ features = combo.columns
 data_array = combo[features].values
 data_array = pd.DataFrame(data_array).dropna().values
 # Normalize the data (optional but often recommended)
-data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
+if data_array.size > 0:
+    data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
+else:
+    print('Data array is empty. Possibly wrong csv merging.')
+    sys.exit(1)
 
-combo['dataset'] = combo.index.map(lambda x: 'sc' if 'sc' in x else ('iri' if 'iri' in x else 'kel'))
+for db in databases:
+    combo['dataset'] = combo.index.map(lambda x: db if db in x else combo['dataset'])
+
 # Specify the number of dimensions for the UMAP projection
 n_components = 2
 
@@ -52,16 +65,19 @@ umap_model = umap.UMAP(n_components=n_components)
 umap_result = umap_model.fit_transform(data_array_normalized)
 
 # Plot the UMAP result
+# Create a color map for all unique values in 'databases'
+color_map = {db: cm.tab10(i) for i, db in enumerate(sorted(set(databases)))}
+combo['dataset_color'] = combo['dataset'].map(color_map)
+
 plt.figure(figsize=(10, 6))
-plt.scatter(umap_result[:, 0], umap_result[:, 1], c=combo['dataset'].map({'sc': "orange", 'iri': 'blue', 'kel': 'red'}),
-            s=3)  # Adjust color and size as needed
+plt.scatter(umap_result[:, 0], umap_result[:, 1], c=combo['dataset_color'], s=3)
 plt.xlabel('UMAP Dimension 1')
 plt.ylabel('UMAP Dimension 2')
 plt.savefig('figures/UMAP.svg', format='svg', transparent=True)
 plt.show()
 
 
-# VOLSITE
+""" # VOLSITE
 
 zero_proportion_volsite = (df_volsite == 0).sum() / len(df_volsite)
 # Drop columns where the proportion of zeros exceeds the threshold
@@ -74,8 +90,7 @@ features_volsite = df_volsite.columns
 data_array_volsite = df_volsite[features_volsite].values
 data_array_volsite = pd.DataFrame(data_array_volsite).dropna().values
 # Normalize the data (optional but often recommended)
-data_array_volsite_normalized = (data_array_volsite - data_array_volsite.min(axis=0)) / (
-            data_array_volsite.max(axis=0) - data_array_volsite.min(axis=0))
+data_array_volsite_normalized = (data_array_volsite - data_array_volsite.min(axis=0)) / (data_array_volsite.max(axis=0) - data_array_volsite.min(axis=0))
 
 df_volsite['dataset'] = df_volsite.index.map(lambda x: 'sc' if 'sc' in x else ('iri' if 'iri' in x else 'kel'))
 # Specify the number of dimensions for the UMAP projection
@@ -127,4 +142,4 @@ plt.scatter(umap_result_alg[:, 0], umap_result_alg[:, 1],
 plt.xlabel('UMAP Dimension 1')
 plt.ylabel('UMAP Dimension 2')
 plt.savefig('figures/UMAP_algorithm.svg', format='svg', transparent=True)
-plt.show()
+plt.show() """
