@@ -2,47 +2,48 @@ import pandas as pd
 import umap.umap_ as umap
 import matplotlib.pyplot as plt
 import os
+import sys
 
 os.makedirs('figures', exist_ok=True)
 
-# df prep
-df_sc = pd.read_csv('../02_scPDB/scPDB_descriptors.csv')
-df_sc.set_index("protein_code", inplace=True)
-df_sc = df_sc.dropna()
-df_sc = df_sc.drop(df_sc.columns[:1], axis=1)
-df_sc.index = df_sc.index + "_sc"
-df_iri = pd.read_csv('../01_Iridium/iridium_desc.csv')
-df_iri.set_index("protein_code", inplace=True)
-df_iri = df_iri.dropna()
-df_iri = df_iri.drop(df_iri.columns[:1], axis=1)
-df_iri.index = df_iri.index + "_iri"
-df_kel = pd.read_csv('../03_KELCH/kelch_descriptors.csv')
-df_kel.set_index("protein_code", inplace=True)
-df_kel = df_kel.dropna()
-df_kel = df_kel.drop(df_kel.columns[:1], axis=1)
-df_kel.index = df_kel.index + "_kel"
+#read in all descriptor csv files, give descriptor directory 
+desc_dir = sys.argv[1]
+
+combo = pd.DataFrame()
+for filename in os.listdir(desc_dir):
+    f = os.path.join(desc_dir, filename)
+    filename, file_extension = os.path.splitext(filename)
+    csv = pd.read_csv(f)
+    csv.index = csv.index + '_' + filename
+    combo = pd.combo.merge(csv, how='right')
+    print(combo.axes[1])
+
+combo.set_index("protein_code", inplace=True)
+combo = combo.dropna()
+combo = combo.drop(combo.columns[:1], axis=1)
+#df_sc.index = df_sc.index + "_sc"
 
 # combine df
-df = pd.concat([df_sc, df_iri, df_kel], axis=0)
-df_volsite = df.iloc[:, 1:89]
-df_algorithm = df.iloc[:, 90:140]
+#df = pd.concat([df_sc, df_iri, df_kel], axis=0)
+df_volsite = combo.iloc[:, 1:89]
+df_algorithm = combo.iloc[:, 90:140]
 
 threshold = 0.9
 # Calculate the proportion of zeros in each column
-zero_proportion = (df == 0).sum() / len(df)
+zero_proportion = (combo == 0).sum() / len(combo)
 # Drop columns where the proportion of zeros exceeds the threshold
 columns_to_drop = zero_proportion[zero_proportion > threshold].index
-df = df.drop(columns=columns_to_drop)
+combo = combo.drop(columns=columns_to_drop)
 # Select the relevant features for training UMAP
-features = df.columns
+features = combo.columns
 
 # Convert the DataFrame to a NumPy array
-data_array = df[features].values
+data_array = combo[features].values
 data_array = pd.DataFrame(data_array).dropna().values
 # Normalize the data (optional but often recommended)
 data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
 
-df['dataset'] = df.index.map(lambda x: 'sc' if 'sc' in x else ('iri' if 'iri' in x else 'kel'))
+combo['dataset'] = combo.index.map(lambda x: 'sc' if 'sc' in x else ('iri' if 'iri' in x else 'kel'))
 # Specify the number of dimensions for the UMAP projection
 n_components = 2
 
@@ -52,7 +53,7 @@ umap_result = umap_model.fit_transform(data_array_normalized)
 
 # Plot the UMAP result
 plt.figure(figsize=(10, 6))
-plt.scatter(umap_result[:, 0], umap_result[:, 1], c=df['dataset'].map({'sc': "orange", 'iri': 'blue', 'kel': 'red'}),
+plt.scatter(umap_result[:, 0], umap_result[:, 1], c=combo['dataset'].map({'sc': "orange", 'iri': 'blue', 'kel': 'red'}),
             s=3)  # Adjust color and size as needed
 plt.xlabel('UMAP Dimension 1')
 plt.ylabel('UMAP Dimension 2')
