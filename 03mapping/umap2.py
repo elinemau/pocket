@@ -2,10 +2,14 @@ import pandas as pd
 import umap.umap_ as umap
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 import os
 import sys
 
 os.makedirs('figures', exist_ok=True)
+
+# Set the Qt platform plugin environment variable
+os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
 #read in all descriptor csv files, give descriptor directory 
 desc_dir = sys.argv[1]
@@ -17,12 +21,13 @@ for filename in os.listdir(desc_dir):
     filename, file_extension = os.path.splitext(filename)
     databases.append(filename)
     csv = pd.read_csv(f)
+    csv['dataset'] = filename
     print(filename)
     print(csv.axes[1])
     if combo.empty:
         combo = csv
     else: 
-        combo = combo.merge(csv, how='inner')
+        combo = combo.merge(csv, how='outer')
     combo.set_index("protein_code", inplace=True)
     csv.index = csv.index.astype(str) + filename
 
@@ -45,17 +50,12 @@ combo = combo.drop(columns=columns_to_drop)
 features = combo.columns
 
 # Convert the DataFrame to a NumPy array
-data_array = combo[features].values
+data_array = combo[features].apply(pd.to_numeric, errors='coerce')
+data_array = data_array.dropna(axis=1)
+data_array = data_array.values
 data_array = pd.DataFrame(data_array).dropna().values
 # Normalize the data (optional but often recommended)
-if data_array.size > 0:
-    data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
-else:
-    print('Data array is empty. Possibly wrong csv merging.')
-    sys.exit(1)
-
-for db in databases:
-    combo['dataset'] = combo.index.map(lambda x: db if db in x else combo['dataset'])
+data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
 
 # Specify the number of dimensions for the UMAP projection
 n_components = 2
@@ -66,10 +66,10 @@ umap_result = umap_model.fit_transform(data_array_normalized)
 
 # Plot the UMAP result
 # Create a color map for all unique values in 'databases'
-color_map = {db: cm.tab10(i) for i, db in enumerate(sorted(set(databases)))}
+color_map = {db: cm.get_cmap('viridis')(i) for i, db in enumerate(databases)}
 combo['dataset_color'] = combo['dataset'].map(color_map)
 
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(25, 25))
 plt.scatter(umap_result[:, 0], umap_result[:, 1], c=combo['dataset_color'], s=3)
 plt.xlabel('UMAP Dimension 1')
 plt.ylabel('UMAP Dimension 2')
