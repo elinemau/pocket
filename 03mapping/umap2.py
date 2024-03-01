@@ -14,25 +14,28 @@ os.environ['QT_QPA_PLATFORM'] = 'xcb'
 #read in all descriptor csv files, give descriptor directory 
 desc_dir = sys.argv[1]
 
+d = dict()
 databases=[]
 combo = pd.DataFrame()
 for filename in os.listdir(desc_dir):
     f = os.path.join(desc_dir, filename)
     filename, file_extension = os.path.splitext(filename)
-    databases.append(filename)
+    
     csv = pd.read_csv(f)
+    databases.append(filename)
     csv['dataset'] = filename
+    d.update({filename: csv.columns})
+    csv.set_index("protein_code", inplace=True)
+    csv.index = csv.index.astype(str) + filename
     print(filename)
-    print(csv.axes[1])
+    
     if combo.empty:
         combo = csv
     else: 
-        combo = combo.merge(csv, how='outer')
-    combo.set_index("protein_code", inplace=True)
-    csv.index = csv.index.astype(str) + filename
+        combo = pd.concat([combo, csv], ignore_index=True)
 
-combo = combo.dropna()
-combo = combo.drop(combo.columns[:1], axis=1)
+selected_columns = d.get("1433")[1:]
+combo = combo[selected_columns]
 #df_sc.index = df_sc.index + "_sc"
 
 # combine df
@@ -47,27 +50,38 @@ zero_proportion = (combo == 0).sum() / len(combo)
 columns_to_drop = zero_proportion[zero_proportion > threshold].index
 combo = combo.drop(columns=columns_to_drop)
 # Select the relevant features for training UMAP
-features = combo.columns
+dataset_att = combo['dataset']
+color_map = {db: cm.get_cmap('viridis')(i) for i, db in enumerate(databases)}
+combo['dataset_color'] = dataset_att.map(color_map)
+
+print(combo['dataset_color'])
+
+features = combo.drop(columns=['dataset']).columns
+
 
 # Convert the DataFrame to a NumPy array
-data_array = combo[features].apply(pd.to_numeric, errors='coerce')
-data_array = data_array.dropna(axis=1)
-data_array = data_array.values
-data_array = pd.DataFrame(data_array).dropna().values
+#data_array = combo[features].apply(pd.to_numeric, errors='coerce')
+#data_array = data_array.dropna(axis=1)
+#data_array = combo[features].apply(pd.to_numeric, errors='coerce').values
+#data_array = pd.DataFrame(data_array).dropna().values
+#data_array = data_array[:, :-1]
+#data_array = data_array[:, 1:]
+#print(data_array) 
+combo[features] = combo[features].apply(lambda x: (x-x.mean())/ x.std(), axis=0)
+
+
 # Normalize the data (optional but often recommended)
-data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
+#data_array_normalized = (data_array - data_array.min(axis=0)) / (data_array.max(axis=0) - data_array.min(axis=0))
 
 # Specify the number of dimensions for the UMAP projection
 n_components = 2
 
 # Create and fit the UMAP model
 umap_model = umap.UMAP(n_components=n_components)
-umap_result = umap_model.fit_transform(data_array_normalized)
+umap_result = umap_model.fit_transform(combo[features])
 
 # Plot the UMAP result
 # Create a color map for all unique values in 'databases'
-color_map = {db: cm.get_cmap('viridis')(i) for i, db in enumerate(databases)}
-combo['dataset_color'] = combo['dataset'].map(color_map)
 
 plt.figure(figsize=(25, 25))
 plt.scatter(umap_result[:, 0], umap_result[:, 1], c=combo['dataset_color'], s=3)

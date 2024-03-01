@@ -860,9 +860,10 @@ if __name__ == '__main__':
         concatenated_df.to_csv(temp_csv_file, index=False)
 
     # Concatenate all temporary CSV files
-    all_csv_files = [os.path.join(desc_temp, f'temp_{j}.csv') for j in range(temp_file_counter)]
     if temp_file_counter == 0:
-        all_csv_files = [f'temp_{temp_file_counter}.csv']
+        all_csv_files = [os.path.join(desc_temp, f'temp_{temp_file_counter}.csv')]
+    else:
+        all_csv_files = [os.path.join(desc_temp, f'temp_{j}.csv') for j in range(temp_file_counter)]
     print(f'All CSV files: {all_csv_files}')
     concatenated_df = pd.concat([pd.read_csv(csv_file) for csv_file in all_csv_files], ignore_index=True)
     concatenated_df.to_csv(output_csv, index=False)
