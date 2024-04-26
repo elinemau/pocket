@@ -43,7 +43,7 @@ def load_structure_data(root_folder):
                         prot_path = os.path.join(struc_path, file)
                         prot_df = load_mol2_file(prot_path)
                         print(prot_path)
-                    elif re.search("lig", file):
+                    elif re.search("cavity", file):
                         lig_path = os.path.join(struc_path, file)
                         lig_df = load_mol2_file(lig_path)               
             yield struc_path, prot_df, lig_df
@@ -798,7 +798,7 @@ if __name__ == '__main__':
 
             # Get residues exposed to the cavity
             print('Calculating residues exposed to the cavity...', end=' ')
-            protein_path = f'{protein_volsite}/{protein_code}_prot.mol2'
+            protein_path = f'{protein_volsite}/protein.mol2'
             exposed_aa = get_exposed_residues(protein_path, protein_df, cavity_path, cavity_df)
             cavity_descriptors = pd.concat([cavity_descriptors, exposed_aa], axis=1)
             print('Done')
