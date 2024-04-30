@@ -9,7 +9,7 @@ import os
 import sys
 
 #USAGE:
-#python3 mapper.py path/descriptor_csv_files 
+#python3 path/mapper.py path/descriptor_csv_files 
 
 #read in all descriptor csv files, give descriptor directory 
 desc_dir = sys.argv[1]
@@ -82,7 +82,7 @@ plt.legend(handles=legend_labels, loc='upper right')
 
 plt.xlabel('UMAP Dimension 1')
 plt.ylabel('UMAP Dimension 2')
-plt.savefig('figures/UMAP.svg', format='svg', transparent=True)
+plt.savefig('03mapping/figures/UMAP_CS.svg', format='svg', transparent=True)
 plt.show()
 
 
