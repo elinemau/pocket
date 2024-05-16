@@ -25,7 +25,7 @@ for filename in os.listdir(desc_dir):
     csv.set_index("protein_code", inplace=True)
     csv = csv.dropna()
     csv = csv.drop(csv.columns[:1], axis=1)
-    csv.index = csv.index + "_" + filename
+    csv.index = csv.index.astype(str) + "_" + filename
     csv_columns = list(csv.columns)
 
     if combo.empty:
@@ -69,7 +69,7 @@ for db in databases:
 combo.to_csv('plotting_file.csv')
 
 #setting a color list
-colors = mcp.gen_color(cmap='winter', n=len(databases))
+colors = mcp.gen_color(cmap='rainbow', n=len(databases))
 color_dict = {db: colors[i] for i, db in enumerate(databases)}
 color_list = [color_dict[db] for db in combo['database']]
 
